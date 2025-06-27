@@ -7,11 +7,14 @@ class AlarmManagerScreen extends StatelessWidget {
   const AlarmManagerScreen({super.key});
 
   Future<void> _requestNotificationPermission(BuildContext context) async {
+    // get a reference to the ScaffoldMessenger before calling async method
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final status = await Permission.notification.request();
+
     if (status.isGranted) {
       await AlarmMethodChannel.scheduleAlarm();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         const SnackBar(
           content:
               Text('Notification permission is required to schedule alarms.'),
