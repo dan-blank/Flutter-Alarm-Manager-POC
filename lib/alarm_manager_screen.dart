@@ -24,7 +24,7 @@ class AlarmManagerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Alarm Manager Screen"),
+        title: const Text('Alarm Manager Screen'),
         centerTitle: true,
         actions: [
           IconButton(
@@ -32,7 +32,7 @@ class AlarmManagerScreen extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  MaterialPageRoute<AlarmActionsScreen>(
                       builder: (_) => const AlarmActionsScreen()));
             },
           )
@@ -43,7 +43,7 @@ class AlarmManagerScreen extends StatelessWidget {
             onPressed: () async {
               await _requestNotificationPermission(context);
             },
-            child: const Text("Schedule Alarm")),
+            child: const Text('Schedule Alarm')),
       ),
     );
   }

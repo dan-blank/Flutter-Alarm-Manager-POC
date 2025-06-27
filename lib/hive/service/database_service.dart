@@ -1,15 +1,16 @@
 import 'dart:developer';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_alarm_manager_poc/hive/models/alarm_action.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/alarm_action.dart';
 
 class DatabaseService {
+  // Private constructor
+  DatabaseService._();
+
   static const String alarmBoxName = 'alarm_actions';
   static DatabaseService? _instance;
   late Box<AlarmAction> _alarmBox;
-
-  // Private constructor
-  DatabaseService._();
 
   // Singleton instance getter
   static DatabaseService get instance {
@@ -27,7 +28,7 @@ class DatabaseService {
       Hive.registerAdapter(AlarmActionAdapter());
       _alarmBox = await Hive.openBox<AlarmAction>(alarmBoxName);
       log('Hive initialized and box opened successfully.');
-    } catch (e) {
+    } on Exception catch (e) {
       log('Failed to initialize Hive or open box: $e');
     }
   }
@@ -40,9 +41,9 @@ class DatabaseService {
       );
       log('Stored alarm action: $actionType');
 
-      var actions = getAllAlarmActions();
+      final actions = getAllAlarmActions();
       log('Retrieved ${actions.length} alarm actions.');
-    } catch (e) {
+    } on Exception catch (e) {
       log('Failed to store alarm action: $e');
     }
   }
@@ -50,10 +51,10 @@ class DatabaseService {
   // Retrieve all alarm actions from the Hive box
   List<AlarmAction> getAllAlarmActions() {
     try {
-      var actions = _alarmBox.values;
+      final actions = _alarmBox.values;
       log('Retrieved ${actions.length} alarm actions.');
       return actions.toList();
-    } catch (e) {
+    } on Exception catch (e) {
       log('Failed to retrieve alarm actions: $e');
       return [];
     }
@@ -64,7 +65,7 @@ class DatabaseService {
     try {
       await _alarmBox.clear();
       log('All alarm actions cleared.');
-    } catch (e) {
+    } on Exception catch (e) {
       log('Failed to clear alarm actions: $e');
     }
   }
