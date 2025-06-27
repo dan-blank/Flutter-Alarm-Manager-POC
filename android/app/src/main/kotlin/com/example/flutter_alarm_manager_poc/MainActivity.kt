@@ -21,10 +21,8 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        FlutterEngineCache.getInstance().put(ENGINE_ID,flutterEngine)
-
+                FlutterEngineCache.getInstance().put(ENGINE_ID, flutterEngine)
         alarmScheduler = AlarmSchedulerImpl(this)
-
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -32,44 +30,23 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "scheduleAlarm" -> {
-                    Log.d(TAG, "Method Channel Invoked, Alarm Scheduling")
-                    scheduleAlarm()
-                    result.success(null)
-                }
-                "questionnaireFinished" -> {
-                    val args = call.arguments as? Map<String, Any>
-                    val status = args?.get("status") as? String
-
-                    when (status) {
-                        "answered" -> {
-                            val data = args["data"] as? Map<String, Int>
-                            val feeling = data?.get("feeling")
-                            val sleepQuality = data?.get("sleepQuality")
-                            Log.d(TAG, "Questionnaire answered: Feeling=$feeling, Sleep Quality=$sleepQuality")
-                        }
-                        "declined" -> {
-                            Log.d(TAG, "Questionnaire was declined by the user.")
-                        }
-                        "snoozed" -> {
-                            Log.d(TAG, "Questionnaire was snoozed.")
-                        }
-                        else -> {
-                            Log.w(TAG, "Unknown questionnaire status: $status")
-                        }
+                    // 1. Extract the trigger time from the arguments.
+                    val triggerTime = call.argument<Long>("triggerTime")
+                    if (triggerTime != null) {
+                        Log.d(TAG, "Method Channel: Scheduling alarm for time: $triggerTime")
+                        // 2. Create an AlarmItem and schedule it.
+                        val alarmItem = AlarmItem(id = 1, message = "Time for your check-in!")
+                        alarmScheduler.schedule(alarmItem, triggerTime)
+                        result.success(null)
+                    } else {
+                        Log.e(TAG, "Method Channel: 'triggerTime' argument was null.")
+                        result.error("INVALID_ARGUMENT", "triggerTime cannot be null", null)
                     }
-                    result.success(null)
                 }
+                // No changes needed for the 'questionnaireFinished' handler on this side,
+                // as its logic is now entirely in Flutter. We can remove it for clarity.
                 else -> result.notImplemented()
             }
         }
-    }
-
-    private fun scheduleAlarm() {
-
-        val alarmItem = AlarmItem(
-            id = 1,
-            message = "Alarm has been ringing"
-        )
-        alarmScheduler.schedule(alarmItem)
     }
 }

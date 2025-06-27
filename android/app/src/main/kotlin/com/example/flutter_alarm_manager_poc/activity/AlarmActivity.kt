@@ -34,8 +34,6 @@ class AlarmActivity : ComponentActivity() {
 
 
         alarmNotificationService = AlarmNotificationServiceImpl(this)
-        alarmScheduler = AlarmSchedulerImpl(this)
-
 
         // Check if a cached engine is available
         flutterEngine = FlutterEngineCache.getInstance().get(ENGINE_ID)
@@ -61,7 +59,6 @@ class AlarmActivity : ComponentActivity() {
                 Surface(color = MaterialTheme.colorScheme.onSurface) {
                     AlarmScreen(
                         onAccept = { q1, q2 ->
-                            // This is the "answered" exit condition
                             val answerData = mapOf("feeling" to q1, "sleepQuality" to q2)
                             val payload = mapOf("status" to "answered", "data" to answerData)
                             channel.invokeMethod("questionnaireFinished", payload)
@@ -69,17 +66,14 @@ class AlarmActivity : ComponentActivity() {
                             finish()
                         },
                         onDecline = {
-                            // This is the "decline" exit condition
                             val payload = mapOf("status" to "declined")
                             channel.invokeMethod("questionnaireFinished", payload)
                             alarmNotificationService.cancelNotification(alarmId)
                             finish()
                         },
                         onSnooze = {
-                            // This is the "snooze" exit condition
                             val payload = mapOf("status" to "snoozed")
                             channel.invokeMethod("questionnaireFinished", payload)
-                            snoozeAlarm() // only snooze re-schedules
                             alarmNotificationService.cancelNotification(alarmId)
                             finish()
                         }
@@ -87,15 +81,6 @@ class AlarmActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun snoozeAlarm() {
-
-        val alarmItem = AlarmItem(
-            id = 1,
-            message = "Alarm has been ringing"
-        )
-        alarmScheduler.schedule(alarmItem)
     }
 
     override fun onDestroy() {

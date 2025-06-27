@@ -13,7 +13,14 @@ class AlarmManagerScreen extends StatelessWidget {
     final status = await Permission.notification.request();
 
     if (status.isGranted) {
-      await AlarmMethodChannel.scheduleAlarm();
+      // This now correctly calculates the first alarm time and schedules it.
+      final triggerTime =
+          await AlarmMethodChannel.scheduleToNextWholeInterval();
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Alarm cycle started, next alarm at $triggerTime'),
+        ),
+      );
     } else {
       scaffoldMessenger.showSnackBar(
         const SnackBar(
@@ -66,9 +73,11 @@ class AlarmManagerScreen extends StatelessWidget {
       body: Center(
         child: ElevatedButton(
             onPressed: () async {
+              // The _requestNotificationPermission should now call the method that
+              // starts the entire alarm cycle.
               await _requestNotificationPermission(context);
             },
-            child: const Text('Schedule Alarm')),
+            child: const Text('Start Alarm Cycle')),
       ),
     );
   }

@@ -6,13 +6,13 @@ import android.content.Context
 import android.content.Intent
 import com.example.flutter_alarm_manager_poc.model.AlarmItem
 import com.example.flutter_alarm_manager_poc.receiver.AlarmReceiver
-import java.util.Calendar
 
 class AlarmSchedulerImpl(private val context: Context) : AlarmScheduler {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    override fun schedule(alarmItem: AlarmItem) {
+    // The schedule method now takes the pre-calculated trigger time.
+    override fun schedule(alarmItem: AlarmItem, triggerTimeInMillis: Long) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", alarmItem.id)
             putExtra("ALARM_MESSAGE", alarmItem.message)
@@ -21,17 +21,13 @@ class AlarmSchedulerImpl(private val context: Context) : AlarmScheduler {
             context,
             alarmItem.id,
             intent,
-            PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT // Use UPDATE_CURRENT to ensure extras are updated
         )
 
-        val triggerTime = Calendar.getInstance().apply {
-            timeInMillis = System.currentTimeMillis()
-            add(Calendar.SECOND,10)  // Set alarm 10 seconds from now
-        }.timeInMillis
-
-        alarmManager.setExact(
+        // No more time calculation here. Just use the value from Flutter.
+        alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            triggerTime,
+            triggerTimeInMillis,
             pendingIntent
         )
     }
