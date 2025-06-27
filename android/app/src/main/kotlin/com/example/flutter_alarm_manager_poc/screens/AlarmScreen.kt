@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Snooze
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,11 +56,13 @@ import org.w3c.dom.Text
 @Composable
 fun AlarmScreen(
     onAccept: (Int, Int) -> Unit,
+    onDecline: () -> Unit,
     onSnooze: () -> Unit
 ) {
     var question1Selection by remember { mutableStateOf<Int?>(null) }
     var question2Selection by remember { mutableStateOf<Int?>(null) }
 
+    // Exit condition 1: Answering all questions automatically triggers the accept action.
     LaunchedEffect(question1Selection, question2Selection) {
         // Storing in local variables for stability within the coroutine scope
         val q1 = question1Selection
@@ -116,12 +119,18 @@ fun AlarmScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
+            // Exit condition 2: Clicking the "Decline" button.
             ButtonAction(
-                icon = Icons.Filled.Check,
-                text = "Accept",
-                onClick = { /* The "Accept" button now has no functionality. */ }
+                icon = Icons.Filled.Close,
+                text = "Decline",
+                onClick = onDecline
             )
-            ButtonAction(icon = Icons.Filled.Close, text = "Snooze", onClick = onSnooze)
+            // Exit condition 3: Clicking the "Snooze" button.
+            ButtonAction(
+                icon = Icons.Filled.Snooze,
+                text = "Snooze",
+                onClick = onSnooze
+            )
         }
     }
 }

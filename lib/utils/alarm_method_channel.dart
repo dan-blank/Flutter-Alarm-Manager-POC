@@ -20,25 +20,21 @@ class AlarmMethodChannel {
   }
 
   static Future<dynamic> _handleMethodCall(MethodCall call) async {
-    // var alarmBox = Hive.box<AlarmAction>('alarm_actions');
-
     switch (call.method) {
-      case 'alarmAccepted':
-        log(name: name, 'Alarm was accepted');
-        //   await alarmBox.add(AlarmAction('accept', DateTime.now()));
+      case 'questionnaireFinished':
+        // This single handler now manages all outcomes from the alarm screen.
+        final args = call.arguments as Map<dynamic, dynamic>;
+        final status = args['status'] as String?;
 
-        await DatabaseService.instance.storeAlarmAction('accept');
+        log(name: name, 'Questionnaire finished with status: $status');
 
-      // Handle alarm accepted
-      // You can call a function or update state here
-      case 'alarmSnoozed':
-        log(name: name, 'Alarm was snoozed');
-        // await alarmBox.add(AlarmAction('snooze', DateTime.now()));
-
-        await DatabaseService.instance.storeAlarmAction('snooze');
-
-      // Handle alarm snoozed
-      // You can call a function or update state here
+        if (status != null) {
+          // The status string ("answered", "declined", "snoozed") is passed
+          // directly to the database service for logging.
+          await DatabaseService.instance.storeAlarmAction(status);
+        } else {
+          log(name: name, 'Questionnaire finished with null status.');
+        }
       default:
         log('Unrecognized method ${call.method}');
     }

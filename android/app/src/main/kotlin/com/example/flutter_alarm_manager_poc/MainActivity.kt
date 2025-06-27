@@ -36,20 +36,27 @@ class MainActivity : FlutterActivity() {
                     scheduleAlarm()
                     result.success(null)
                 }
-                "alarmAccepted" -> {
-                    val data = call.arguments as? Map<String, Int>
-                    if (data != null) {
-                        val feeling = data["feeling"]
-                        val sleepQuality = data["sleepQuality"]
-                        Log.d(TAG, "Alarm Accepted with data: Feeling=$feeling, Sleep Quality=$sleepQuality")
-                    } else {
-                        Log.d(TAG, "Alarm Accepted with no data.")
+                "questionnaireFinished" -> {
+                    val args = call.arguments as? Map<String, Any>
+                    val status = args?.get("status") as? String
+
+                    when (status) {
+                        "answered" -> {
+                            val data = args["data"] as? Map<String, Int>
+                            val feeling = data?.get("feeling")
+                            val sleepQuality = data?.get("sleepQuality")
+                            Log.d(TAG, "Questionnaire answered: Feeling=$feeling, Sleep Quality=$sleepQuality")
+                        }
+                        "declined" -> {
+                            Log.d(TAG, "Questionnaire was declined by the user.")
+                        }
+                        "snoozed" -> {
+                            Log.d(TAG, "Questionnaire was snoozed.")
+                        }
+                        else -> {
+                            Log.w(TAG, "Unknown questionnaire status: $status")
+                        }
                     }
-                    result.success(null)
-                }
-                "alarmSnoozed" -> {
-                    Log.d(TAG, "Alarm Snoozed")
-                    // Handle alarm snoozed
                     result.success(null)
                 }
                 else -> result.notImplemented()
