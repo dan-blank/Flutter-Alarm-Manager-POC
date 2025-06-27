@@ -8,15 +8,12 @@ class DatabaseService {
   // Private constructor
   DatabaseService._();
 
-  static const String alarmBoxName = 'alarm_actions';
-  static DatabaseService? _instance;
-  late Box<AlarmAction> _alarmBox;
+  static final DatabaseService _instance = DatabaseService._();
 
-  // Singleton instance getter
-  static DatabaseService get instance {
-    _instance ??= DatabaseService._();
-    return _instance!;
-  }
+  static DatabaseService get instance => _instance;
+
+  static const String alarmBoxName = 'alarm_actions';
+  late Box<AlarmAction> _alarmBox;
 
   ValueListenable<Box<AlarmAction>> get alarmBoxListenable =>
       _alarmBox.listenable();
