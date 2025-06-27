@@ -61,20 +61,11 @@ class AlarmActivity : ComponentActivity() {
                 Surface(color = MaterialTheme.colorScheme.onSurface) {
                     AlarmScreen(
                         onAccept = { q1, q2 ->
-                            // Check if both questions have been answered
-                            if (q1 != null && q2 != null) {
-                                val data = mapOf("feeling" to q1, "sleepQuality" to q2)
-                                channel.invokeMethod("alarmAccepted", data)
-                                alarmNotificationService.cancelNotification(alarmId)
-                                finish()
-                            } else {
-                                // Show a toast if validation fails
-                                Toast.makeText(
-                                    this,
-                                    "Please answer both questions.",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+                            // This is now only called when both answers are available.
+                            val data = mapOf("feeling" to q1, "sleepQuality" to q2)
+                            channel.invokeMethod("alarmAccepted", data)
+                            alarmNotificationService.cancelNotification(alarmId)
+                            finish()
                         },
                         onSnooze = {
                             channel.invokeMethod("alarmSnoozed", null)

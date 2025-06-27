@@ -54,11 +54,22 @@ import org.w3c.dom.Text
 
 @Composable
 fun AlarmScreen(
-    onAccept: (Int?, Int?) -> Unit, 
+    onAccept: (Int, Int) -> Unit,
     onSnooze: () -> Unit
 ) {
     var question1Selection by remember { mutableStateOf<Int?>(null) }
     var question2Selection by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(question1Selection, question2Selection) {
+        // Storing in local variables for stability within the coroutine scope
+        val q1 = question1Selection
+        val q2 = question2Selection
+
+        // If both questions have been answered, trigger the accept action.
+        if (q1 != null && q2 != null) {
+            onAccept(q1, q2)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -108,7 +119,7 @@ fun AlarmScreen(
             ButtonAction(
                 icon = Icons.Filled.Check,
                 text = "Accept",
-                onClick = { onAccept(question1Selection, question2Selection) }
+                onClick = { /* The "Accept" button now has no functionality. */ }
             )
             ButtonAction(icon = Icons.Filled.Close, text = "Snooze", onClick = onSnooze)
         }
