@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alarm_manager_poc/alarm_actions_screen.dart';
+import 'package:flutter_alarm_manager_poc/services/export_service.dart';
 import 'package:flutter_alarm_manager_poc/utils/alarm_method_channel.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -25,18 +26,39 @@ class AlarmManagerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Instantiate the service
+    final exportService = ExportService();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Alarm Manager Screen'),
         centerTitle: true,
         actions: [
+          // View saved data button
           IconButton(
-            icon: const Icon(Icons.access_alarm),
+            icon: const Icon(Icons.history),
+            tooltip: 'View Stored Data',
             onPressed: () {
               Navigator.push(
                   context,
                   MaterialPageRoute<AlarmActionsScreen>(
                       builder: (_) => const AlarmActionsScreen()));
+            },
+          ),
+          // Change Export Path button
+          IconButton(
+            icon: const Icon(Icons.folder_open),
+            tooltip: 'Change Export Path',
+            onPressed: () {
+              exportService.changeExportPath(context);
+            },
+          ),
+          // Export button
+          IconButton(
+            icon: const Icon(Icons.file_download),
+            tooltip: 'Export Data',
+            onPressed: () {
+              exportService.exportData(context);
             },
           )
         ],

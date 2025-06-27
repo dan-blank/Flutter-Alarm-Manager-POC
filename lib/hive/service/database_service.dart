@@ -57,6 +57,17 @@ class DatabaseService {
     }
   }
 
+  Map<dynamic, AlarmAction> getAllAlarmActionsMap() {
+    try {
+      final actionsMap = _alarmBox.toMap();
+      log('Retrieved ${actionsMap.length} alarm actions as a map.');
+      return actionsMap;
+    } on Exception catch (e) {
+      log('Failed to retrieve alarm actions map: $e');
+      return {};
+    }
+  }
+
   // Clear all alarm actions (if needed)
   Future<void> clearAllAlarmActions() async {
     try {

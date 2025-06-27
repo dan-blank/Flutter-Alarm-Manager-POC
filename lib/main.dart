@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alarm_manager_poc/alarm_manager_screen.dart';
 import 'package:flutter_alarm_manager_poc/hive/service/database_service.dart';
+import 'package:flutter_alarm_manager_poc/hive/service/settings_service.dart';
 import 'package:flutter_alarm_manager_poc/utils/alarm_method_channel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService.instance.initializeHive();
+  await SettingsService.instance.initializeHive();
   AlarmMethodChannel.initialize();
   runApp(const MyApp());
 }
@@ -13,7 +15,6 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
