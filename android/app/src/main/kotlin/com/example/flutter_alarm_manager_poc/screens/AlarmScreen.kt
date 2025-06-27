@@ -162,50 +162,6 @@ fun ButtonAction(
     }
 }
 
-@Composable
-fun AnimatedProfileImage() {
-    var isAnimating by remember { mutableStateOf(false) }
-    val elevation by animateDpAsState(
-        targetValue = if (isAnimating) 30.dp else 15.dp,
-        animationSpec = infiniteRepeatable(
-            repeatMode = RepeatMode.Reverse,
-            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
-        ),
-        label = "elevation"
-    )
-
-    LaunchedEffect(Unit) {
-        isAnimating = true
-    }
-
-    Surface(
-        modifier = Modifier
-            .size(100.dp)
-            .shadow(
-                elevation = elevation,
-                shape = CircleShape,
-                ambientColor = Color(0xFF7F11E4).copy(alpha = 0.6f), // Stronger shadow with ambient color
-                spotColor = Color(0xFF7D09E9).copy(alpha = 0.8f) // Increase shadow intensity
-            ),
-        shape = CircleShape,
-        color = Color(0xFF8A2BE2) // This will be the border color
-    ) {
-        Box(
-            modifier = Modifier.padding(4.dp), // This creates the border effect
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = "https://play-lh.googleusercontent.com/KGOmMhN6spxlHwZrtHvhQ1L0ZbokbKIHBAJTjmwF40yW9KVnCYt6AdpSQOFMVaLmj7o",
-                contentDescription = "Profile image",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-        }
-    }
-}
-
 @Preview
 @Composable
 fun QuestionSection(
