@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,9 +54,12 @@ import org.w3c.dom.Text
 
 @Composable
 fun AlarmScreen(
-    onAccept: () -> Unit,
+    onAccept: (Int?, Int?) -> Unit, 
     onSnooze: () -> Unit
 ) {
+    var question1Selection by remember { mutableStateOf<Int?>(null) }
+    var question2Selection by remember { mutableStateOf<Int?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -78,20 +83,35 @@ fun AlarmScreen(
                 color = Color.White,
                 modifier = Modifier.padding(bottom = 32.dp)
             )
+        }
 
-            AnimatedProfileImage()
-
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            QuestionSection(
+                question = "How are you feeling?",
+                selectedOption = question1Selection,
+                onOptionSelected = { question1Selection = it }
+            )
+            QuestionSection(
+                question = "How did you sleep?",
+                selectedOption = question2Selection,
+                onOptionSelected = { question2Selection = it }
+            )
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
-            ButtonAction(icon = Icons.Filled.Check, text = "Accept", onClick = onAccept)
+            ButtonAction(
+                icon = Icons.Filled.Check,
+                text = "Accept",
+                onClick = { onAccept(question1Selection, question2Selection) }
+            )
             ButtonAction(icon = Icons.Filled.Close, text = "Snooze", onClick = onSnooze)
         }
-
-
     }
 }
 
@@ -177,6 +197,40 @@ fun AnimatedProfileImage() {
 
 @Preview
 @Composable
-private fun PrevAlarmScreen() {
-    AlarmScreen(onAccept = { /*TODO*/ }, onSnooze = { /*TODO*/ })
+fun QuestionSection(
+    question: String,
+    selectedOption: Int?,
+    onOptionSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = question,
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            (1..3).forEach { option ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = (selectedOption == option),
+                        onClick = { onOptionSelected(option) },
+                        colors = RadioButtonDefaults.colors(
+                            selectedColor = Color.White,
+                            unselectedColor = Color.Gray
+                        )
+                    )
+                    Text(
+                        text = option.toString(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
 }

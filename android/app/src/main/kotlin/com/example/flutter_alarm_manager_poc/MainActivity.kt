@@ -37,8 +37,14 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "alarmAccepted" -> {
-                    Log.d(TAG, "Alarm Accepted")
-                    // Handle alarm accepted
+                    val data = call.arguments as? Map<String, Int>
+                    if (data != null) {
+                        val feeling = data["feeling"]
+                        val sleepQuality = data["sleepQuality"]
+                        Log.d(TAG, "Alarm Accepted with data: Feeling=$feeling, Sleep Quality=$sleepQuality")
+                    } else {
+                        Log.d(TAG, "Alarm Accepted with no data.")
+                    }
                     result.success(null)
                 }
                 "alarmSnoozed" -> {
