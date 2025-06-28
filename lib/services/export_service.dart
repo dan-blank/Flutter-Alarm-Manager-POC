@@ -20,6 +20,25 @@ class ExportService {
   final SettingsService _settingsService = SettingsService.instance;
   final DatabaseService _databaseService = DatabaseService.instance;
 
+  /// Escapes a string for use in a CSV file.
+  ///
+  /// If the string contains a comma, a double quote, or a newline character,
+  /// it will be enclosed in double quotes. Any double quotes within the string
+  /// will be replaced by two double quotes.
+  String _csvEscape(String? text) {
+    if (text == null) {
+      return '';
+    }
+    // If the text contains a comma, a quote, or a newline, it needs to be quoted.
+    if (text.contains(',') || text.contains('"') || text.contains('\n')) {
+      // In a quoted field, any double-quote characters must be escaped by doubling them.
+      final escapedText = text.replaceAll('"', '""');
+      return '"$escapedText"';
+    }
+    // If no special characters are present, the text can be used as-is.
+    return text;
+  }
+
   Future<ServiceResult> _getAndSetExportPath() async {
     final PermissionStatus status;
     if (Platform.isAndroid) {
@@ -146,22 +165,25 @@ class ExportService {
     // 3. CSV Rows
     for (final entry in newActions) {
       final action = entry.value;
-      // Convert timestamp back to ISO string for the export file
       final timestampString =
           DateTime.fromMillisecondsSinceEpoch(action.timestamp)
               .toIso8601String();
-      final row = [
-        entry.key,
-        action.actionType.name, // Use .name for the enum
-        '"$timestampString"', // Quote the timestamp string
+
+      // Use a list to hold the properly escaped cell values for the current row
+      final rowValues = <String>[
+        // ID doesn't need escaping as it's a number.
+        entry.key.toString(),
+        // Escape all other string values to handle special characters.
+        _csvEscape(action.actionType.name),
+        _csvEscape(timestampString),
       ];
 
-      // Add values for each dynamic answer column
+      // Add values for each dynamic answer column, escaping each one.
       for (final key in sortedAnswerKeys) {
-        // Append the answer if it exists, otherwise append an empty string
-        row.add(action.answers?[key]?.toString() ?? '');
+        final value = action.answers?[key]?.toString();
+        rowValues.add(_csvEscape(value));
       }
-      csvBuffer.writeln(row.join(','));
+      csvBuffer.writeln(rowValues.join(','));
     }
 
     // 4. Write file
