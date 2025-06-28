@@ -40,7 +40,10 @@ class AlarmNotificationServiceImpl(private val context: Context) : AlarmNotifica
 
     override fun showNotification(alarmItem: AlarmItem, behavior: String) {
         val fullScreenIntent = Intent(context, AlarmActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_NO_USER_ACTION or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS 
+
             putExtra("ALARM_ID", alarmItem.id)
             putExtra("ALARM_MESSAGE", alarmItem.message)
         }
