@@ -31,12 +31,13 @@ class DatabaseService {
   }
 
   // Add an alarm action to the Hive box
-  Future<void> storeAlarmAction(String actionType) async {
+  Future<void> storeAlarmAction(String actionType,
+      {Map<String, int>? answers}) async {
     try {
       await _alarmBox.add(
-        AlarmAction(actionType, DateTime.now()),
+        AlarmAction(actionType, DateTime.now(), answers),
       );
-      log('Stored alarm action: $actionType');
+      log('Stored alarm action: $actionType with answers: $answers');
 
       final actions = getAllAlarmActions();
       log('Retrieved ${actions.length} alarm actions.');

@@ -84,15 +84,20 @@ class AlarmMethodChannel {
 
         if (status != null) {
           // 1. Store the user's action
-          await DatabaseService.instance.storeAlarmAction(status);
-
-          // 2. Schedule the next alarm based on the action
           switch (status) {
             case 'answered':
+              final answerData = args['data'] as Map<dynamic, dynamic>?;
+              // Safely cast to the expected type for Hive.
+              final answers = answerData
+                  ?.map((key, value) => MapEntry(key.toString(), value as int));
+              await DatabaseService.instance
+                  .storeAlarmAction(status, answers: answers);
               await scheduleToNextWholeInterval();
             case 'declined':
+              await DatabaseService.instance.storeAlarmAction(status);
               await scheduleToNextWholeInterval();
             case 'snoozed':
+              await DatabaseService.instance.storeAlarmAction(status);
               await scheduleToNextSnoozeInterval();
           }
         } else {

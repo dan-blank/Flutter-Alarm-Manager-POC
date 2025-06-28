@@ -66,7 +66,7 @@ class ExportService {
     }
 
     final directory = Directory(exportPath);
-    if (!await directory.existsSync()) {
+    if (!directory.existsSync()) {
       await showSnackBar(
           context, 'Error: The selected directory does not exist.');
       return;
@@ -110,7 +110,18 @@ class ExportService {
       return;
     }
 
-    // Prepare CSV content
+    // --- DYNAMIC CSV GENERATION ---
+
+    // 1. Find all unique answer keys to create dynamic columns
+    final answerKeys = <String>{};
+    for (final entry in newActions) {
+      if (entry.value.answers != null) {
+        answerKeys.addAll(entry.value.answers!.keys);
+      }
+    }
+    final sortedAnswerKeys = answerKeys.toList()..sort();
+
+    // 2. Prepare CSV content with a dynamic header
     final highestNewId =
         newActions.map((e) => e.key).reduce((a, b) => a > b ? a : b);
     final timestamp = DateFormat('yyyy-MM-dd-HH-mm-ss').format(DateTime.now());
@@ -118,15 +129,30 @@ class ExportService {
 
     final csvBuffer = StringBuffer()
       // CSV Header
-      ..writeln('id,actionType,timestamp');
-    // CSV Rows
+      ..write('id,actionType,timestamp');
+    if (sortedAnswerKeys.isNotEmpty) {
+      csvBuffer.write(',${sortedAnswerKeys.join(',')}');
+    }
+    csvBuffer.writeln(); // End of header line
+
+    // 3. CSV Rows
     for (final entry in newActions) {
       final action = entry.value;
-      csvBuffer.writeln(
-          '${entry.key},${action.actionType},"${action.timestamp.toIso8601String()}"');
+      final row = [
+        entry.key,
+        action.actionType,
+        '"${action.timestamp.toIso8601String()}"',
+      ];
+
+      // Add values for each dynamic answer column
+      for (final key in sortedAnswerKeys) {
+        // Append the answer if it exists, otherwise append an empty string
+        row.add(action.answers?[key]?.toString() ?? '');
+      }
+      csvBuffer.writeln(row.join(','));
     }
 
-    // Write file
+    // 4. Write file
     final file = File('${directory.path}${Platform.pathSeparator}$fileName');
     try {
       await file.writeAsString(csvBuffer.toString());

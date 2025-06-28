@@ -19,17 +19,20 @@ class AlarmActionAdapter extends TypeAdapter<AlarmAction> {
     return AlarmAction(
       fields[0] as String,
       fields[1] as DateTime,
+      (fields[2] as Map?)?.cast<String, int>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, AlarmAction obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.actionType)
       ..writeByte(1)
-      ..write(obj.timestamp);
+      ..write(obj.timestamp)
+      ..writeByte(2)
+      ..write(obj.answers);
   }
 
   @override
