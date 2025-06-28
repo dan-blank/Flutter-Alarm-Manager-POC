@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alarm_manager_poc/alarm_actions_screen.dart';
+import 'package:flutter_alarm_manager_poc/hive/service/settings_service.dart';
 import 'package:flutter_alarm_manager_poc/services/export_service.dart';
 import 'package:flutter_alarm_manager_poc/state/alarm_state_manager.dart';
+import 'package:flutter_alarm_manager_poc/state/notification_behavior.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class AlarmManagerScreen extends StatefulWidget {
@@ -14,6 +16,13 @@ class AlarmManagerScreen extends StatefulWidget {
 class _AlarmManagerScreenState extends State<AlarmManagerScreen> {
   final _exportService = ExportService();
   final AlarmStateManager alarmStateManager = AlarmStateManager.instance;
+  late NotificationBehavior _currentBehavior;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentBehavior = SettingsService.instance.getNotificationBehavior();
+  }
 
   Future<bool> _requestNotificationPermission() async {
     final status = await Permission.notification.request();
@@ -33,23 +42,18 @@ class _AlarmManagerScreenState extends State<AlarmManagerScreen> {
   }
 
   void _showSnackBar(String message) {
-    // The 'mounted' check here is a best practice, ensuring the widget
-    // is still in the tree before attempting to show the SnackBar.
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
-  /// Async handler for changing the export path.
   Future<void> _changeExportPath() async {
     final result = await _exportService.changeExportPath();
     _showSnackBar(result.message);
   }
 
-  /// Async handler for exporting data.
   Future<void> _exportData() async {
-    // You can add loading indicators here if you wish
     final result = await _exportService.exportData();
     _showSnackBar(result.message);
   }
@@ -85,9 +89,7 @@ class _AlarmManagerScreenState extends State<AlarmManagerScreen> {
         ],
       ),
       body: StreamBuilder<AlarmState>(
-        // Listen to the state stream.
         stream: alarmStateManager.state,
-        // Provide the initial state to avoid a null snapshot on the first build.
         initialData: alarmStateManager.currentState,
         builder: (context, snapshot) {
           final state = snapshot.data;
@@ -98,31 +100,52 @@ class _AlarmManagerScreenState extends State<AlarmManagerScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // --- Notification Behavior Dropdown (always visible) ---
+                  DropdownButtonFormField<NotificationBehavior>(
+                    value: _currentBehavior,
+                    decoration: const InputDecoration(
+                      labelText: 'Notification Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: NotificationBehavior.values
+                        .map((behavior) => DropdownMenuItem(
+                              value: behavior,
+                              child: Text(behavior.name),
+                            ))
+                        .toList(),
+                    onChanged: (newValue) async {
+                      if (newValue != null) {
+                        // 1. Persist the new setting
+                        await SettingsService.instance
+                            .setNotificationBehavior(newValue);
+                        // 2. Update the local UI state
+                        setState(() {
+                          _currentBehavior = newValue;
+                        });
+                        // 3. If a cycle is active, dispatch an event to update it
+                        if (alarmStateManager.currentState is AlarmActive) {
+                          alarmStateManager
+                              .dispatch(NotificationBehaviorChanged(newValue));
+                        }
+                        _showSnackBar(
+                            'Notification type set to ${newValue.name}');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
                   // --- UI for AlarmIdle state ---
                   if (state is AlarmIdle) ...[
                     const Text('Alarm cycle is not running.'),
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () async {
-                        // The UI's only job is to request permission and
-                        // then send an event to the state machine.
                         final granted = await _requestNotificationPermission();
                         if (granted) {
                           alarmStateManager.dispatch(CycleStarted());
                         }
                       },
                       child: const Text('Start Alarm Cycle'),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange),
-                      onPressed: () {
-                        // The debug button simply sends a different event.
-                        // The state machine handles the logic.
-                        alarmStateManager.dispatch(DebugScheduleRequested());
-                      },
-                      child: const Text('Schedule debug alarm in 10 sec'),
                     ),
                   ],
 
@@ -139,10 +162,18 @@ class _AlarmManagerScreenState extends State<AlarmManagerScreen> {
                       style:
                           ElevatedButton.styleFrom(backgroundColor: Colors.red),
                       onPressed: () {
-                        // The cancel button sends the appropriate event.
                         alarmStateManager.dispatch(CycleCancelled());
                       },
                       child: const Text('Cancel Alarm Cycle'),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange),
+                      onPressed: () {
+                        alarmStateManager.dispatch(DebugScheduleRequested());
+                      },
+                      child: const Text('Schedule debug alarm in 10 sec'),
                     ),
                   ],
                 ],

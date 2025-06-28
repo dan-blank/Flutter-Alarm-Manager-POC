@@ -1,17 +1,31 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_alarm_manager_poc/hive/service/settings_service.dart';
+import 'package:flutter_alarm_manager_poc/state/notification_behavior.dart';
+
 // --- STATES ---
-// Using a sealed class ensures that we can only be in one of the defined states.
 sealed class AlarmState {}
 
-// The app is idle. No alarm is scheduled.
 final class AlarmIdle extends AlarmState {}
 
-// The cycle is running. An alarm is ALWAYS scheduled for a specific time.
+@immutable
 final class AlarmActive extends AlarmState {
-  AlarmActive({required this.scheduledAt});
+  AlarmActive({required this.scheduledAt, required this.behavior});
   final DateTime scheduledAt;
+  final NotificationBehavior behavior;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AlarmActive &&
+          runtimeType == other.runtimeType &&
+          scheduledAt == other.scheduledAt &&
+          behavior == other.behavior;
+
+  @override
+  int get hashCode => scheduledAt.hashCode ^ behavior.hashCode;
 }
 
 // --- EVENTS ---
@@ -29,7 +43,12 @@ final class QuestionnaireFinished extends AlarmEvent {
 
 final class DebugScheduleRequested extends AlarmEvent {}
 
-// Helper enum to make the code more readable and type-safe.
+// New event to handle behavior changes.
+final class NotificationBehaviorChanged extends AlarmEvent {
+  NotificationBehaviorChanged(this.newBehavior);
+  final NotificationBehavior newBehavior;
+}
+
 enum QuestionnaireResult { answered, declined, snoozed }
 
 // --- THE STATE MACHINE ("BRAIN") ---
@@ -40,28 +59,16 @@ class AlarmStateManager {
 
   // The initial state of the application.
   AlarmState _state = AlarmIdle();
-
-  // A broadcast stream controller allows multiple parts of the app (e.g., UI, interpreter)
-  // to listen to state changes.
   final _controller = StreamController<AlarmState>.broadcast();
 
-  // Public stream for widgets and services to listen to.
   Stream<AlarmState> get state => _controller.stream;
-
-  // A way to get the current state synchronously if needed.
   AlarmState get currentState => _state;
 
   void dispatch(AlarmEvent event) {
     log('Dispatching event: ${event.runtimeType} from state: ${_state.runtimeType}');
-
-    // The new state is calculated based on the current state and the incoming event.
     final newState = _reduce(_state, event);
 
-    // If the state has changed, update it and notify all listeners.
-    if (newState.runtimeType != _state.runtimeType ||
-        (newState is AlarmActive &&
-            _state is AlarmActive &&
-            newState.scheduledAt != (_state as AlarmActive).scheduledAt)) {
+    if (newState != _state) {
       _state = newState;
       _controller.add(_state);
     }
@@ -70,11 +77,19 @@ class AlarmStateManager {
   // The "reducer" function contains all the transition logic.
   // It's a pure function: given a state and an event, it returns a new state.
   AlarmState _reduce(AlarmState currentState, AlarmEvent event) {
+    // Helper to get the current notification setting.
+    NotificationBehavior getCurrentBehavior() {
+      return SettingsService.instance.getNotificationBehavior();
+    }
+
     switch (event) {
       case CycleStarted():
         // Can only start a cycle if we are currently idle.
         if (currentState is AlarmIdle) {
-          return AlarmActive(scheduledAt: _calculateNextWholeIntervalTime());
+          return AlarmActive(
+            scheduledAt: _calculateNextWholeIntervalTime(),
+            behavior: getCurrentBehavior(),
+          );
         }
       case CycleCancelled():
         // Can only cancel a cycle if one is active.
@@ -86,28 +101,41 @@ class AlarmStateManager {
         // The type of alarm depends on the user's answer.
         switch (event.result) {
           case QuestionnaireResult.answered:
-            return AlarmActive(scheduledAt: _calculateNextWholeIntervalTime());
           case QuestionnaireResult.declined:
-            return AlarmActive(scheduledAt: _calculateNextWholeIntervalTime());
+            return AlarmActive(
+              scheduledAt: _calculateNextWholeIntervalTime(),
+              behavior: getCurrentBehavior(),
+            );
           case QuestionnaireResult.snoozed:
-            return AlarmActive(scheduledAt: _calculateSnoozeTime());
+            return AlarmActive(
+              scheduledAt: _calculateSnoozeTime(),
+              behavior: getCurrentBehavior(),
+            );
         }
       case DebugScheduleRequested():
         // A special event for testing that schedules an alarm 10 seconds from now.
         return AlarmActive(
-            scheduledAt: DateTime.now().add(const Duration(seconds: 10)));
+          scheduledAt: DateTime.now().add(const Duration(seconds: 10)),
+          behavior: getCurrentBehavior(),
+        );
+      // Handle the new event to update the behavior of an active alarm.
+      case NotificationBehaviorChanged(newBehavior: final behavior):
+        if (currentState is AlarmActive) {
+          // Create a new state with the same time but new behavior.
+          return AlarmActive(
+            scheduledAt: currentState.scheduledAt,
+            behavior: behavior,
+          );
+        }
     }
-    // If the event doesn't cause a state change, return the current state.
     return currentState;
   }
 
-  // --- TIME CALCULATION LOGIC (moved from AlarmMethodChannel) ---
   DateTime _calculateNextWholeIntervalTime() {
     final now = DateTime.now();
     DateTime nextAlarmTime;
 
     if (now.hour >= 20) {
-      // Changed from 23 to 20 as per original logic
       nextAlarmTime = DateTime(now.year, now.month, now.day + 1, 8);
     } else if (now.hour < 8) {
       nextAlarmTime = DateTime(now.year, now.month, now.day, 8);
