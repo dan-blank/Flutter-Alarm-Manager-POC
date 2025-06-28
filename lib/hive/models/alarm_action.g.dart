@@ -17,8 +17,8 @@ class AlarmActionAdapter extends TypeAdapter<AlarmAction> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return AlarmAction(
-      fields[0] as String,
-      fields[1] as DateTime,
+      fields[0] as AlarmActionType,
+      fields[1] as int,
       (fields[2] as Map?)?.cast<String, int>(),
     );
   }

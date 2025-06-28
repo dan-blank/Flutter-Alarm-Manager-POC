@@ -73,7 +73,7 @@ class ExportService {
     }
 
     // Scan for existing files and get the biggest ID
-    var lastExportedId = 0;
+    var lastExportedId = -1; // Use -1 to ensure ID 0 is included
     try {
       final files = directory.listSync();
       for (final file in files) {
@@ -81,7 +81,7 @@ class ExportService {
           final filename = file.path.split(Platform.pathSeparator).last;
           if (filename.startsWith('tracky_export_prefix_')) {
             final parts = filename.split('_');
-            if (parts.length > 2) {
+            if (parts.length > 3) {
               // tracy_export_prefix_<id>_<timestamp>.csv
               //   0     1      2     3        4
               final id = int.tryParse(parts[3]);
@@ -108,9 +108,21 @@ class ExportService {
         .toList();
 
     if (newActions.isEmpty) {
-      await showSnackBar(context, 'No new data to export.');
+      await showSnackBar(
+        context,
+        'No new data to export. Already up to date (last ID: $lastExportedId).',
+      );
       return;
     }
+
+    final lowestNewId = newActions.first.key;
+    // Use .last.key because Hive's toMap().entries is ordered by key
+    final highestNewId = newActions.last.key;
+
+    log(
+      'Previous export found up to ID: $lastExportedId. '
+      'Exporting new items from ID $lowestNewId to $highestNewId.',
+    );
 
     // --- DYNAMIC CSV GENERATION ---
 
@@ -124,8 +136,7 @@ class ExportService {
     final sortedAnswerKeys = answerKeys.toList()..sort();
 
     // 2. Prepare CSV content with a dynamic header
-    final highestNewId =
-        newActions.map((e) => e.key).reduce((a, b) => a > b ? a : b);
+    // Use the highest *new* ID for the filename
     final timestamp = DateFormat('yyyy-MM-dd-HH-mm-ss').format(DateTime.now());
     final fileName = 'tracky_export_prefix_${highestNewId}_$timestamp.csv';
 
@@ -140,10 +151,14 @@ class ExportService {
     // 3. CSV Rows
     for (final entry in newActions) {
       final action = entry.value;
+      // Convert timestamp back to ISO string for the export file
+      final timestampString =
+          DateTime.fromMillisecondsSinceEpoch(action.timestamp)
+              .toIso8601String();
       final row = [
         entry.key,
-        action.actionType,
-        '"${action.timestamp.toIso8601String()}"',
+        action.actionType.name, // Use .name for the enum
+        '"$timestampString"', // Quote the timestamp string
       ];
 
       // Add values for each dynamic answer column
@@ -159,8 +174,10 @@ class ExportService {
     try {
       await file.writeAsString(csvBuffer.toString());
       log('Export successful to ${file.path}');
-      await showSnackBar(context,
-          'Successfully exported ${newActions.length} new items to $fileName');
+      await showSnackBar(
+        context,
+        'Exported ${newActions.length} items (IDs $lowestNewId-$highestNewId) to $fileName',
+      );
     } on Exception catch (e) {
       log('Error writing file: $e');
       await showSnackBar(context, 'Failed to write export file.');

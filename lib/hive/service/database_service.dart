@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alarm_manager_poc/hive/models/alarm_action.dart';
+import 'package:flutter_alarm_manager_poc/hive/models/alarm_action_type.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class DatabaseService {
@@ -22,7 +23,9 @@ class DatabaseService {
   Future<void> initializeHive() async {
     try {
       await Hive.initFlutter();
-      Hive.registerAdapter(AlarmActionAdapter());
+      Hive
+        ..registerAdapter(AlarmActionAdapter())
+        ..registerAdapter(AlarmActionTypeAdapter());
       _alarmBox = await Hive.openBox<AlarmAction>(alarmBoxName);
       log('Hive initialized and box opened successfully.');
     } on Exception catch (e) {
@@ -31,13 +34,17 @@ class DatabaseService {
   }
 
   // Add an alarm action to the Hive box
-  Future<void> storeAlarmAction(String actionType,
+  Future<void> storeAlarmAction(AlarmActionType actionType,
       {Map<String, int>? answers}) async {
     try {
       await _alarmBox.add(
-        AlarmAction(actionType, DateTime.now(), answers),
+        AlarmAction(
+          actionType,
+          DateTime.now().millisecondsSinceEpoch,
+          answers,
+        ),
       );
-      log('Stored alarm action: $actionType with answers: $answers');
+      log('Stored alarm action: ${actionType.name} with answers: $answers');
 
       final actions = getAllAlarmActions();
       log('Retrieved ${actions.length} alarm actions.');

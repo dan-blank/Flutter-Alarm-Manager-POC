@@ -41,8 +41,15 @@ class _AlarmActionsScreenState extends State<AlarmActionsScreen> {
             itemBuilder: (context, index) {
               final action = actions[index];
               return ListTile(
-                title: Text(action.actionType),
-                subtitle: Text(action.timestamp.toString()),
+                // Use the .name property to get a string representation of the enum
+                title: Text('Action: ${action.actionType.name}'),
+
+                // Convert the integer timestamp back to a DateTime object for formatting
+                subtitle: Text(
+                  DateTime.fromMillisecondsSinceEpoch(action.timestamp)
+                      .toLocal()
+                      .toString(),
+                ),
               );
             },
           );

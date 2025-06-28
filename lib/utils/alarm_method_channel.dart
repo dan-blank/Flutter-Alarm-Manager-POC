@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_alarm_manager_poc/hive/models/alarm_action_type.dart';
 import 'package:flutter_alarm_manager_poc/hive/service/database_service.dart';
 import 'package:flutter_alarm_manager_poc/state/alarm_state_manager.dart';
 import 'package:flutter_alarm_manager_poc/state/notification_behavior.dart';
@@ -57,25 +58,28 @@ class AlarmMethodChannel {
           final answerData = args['data'] as Map<dynamic, dynamic>?;
           final answers = answerData
               ?.map((key, value) => MapEntry(key.toString(), value as int));
-          await DatabaseService.instance
-              .storeAlarmAction(status, answers: answers);
 
-          // 2. Convert the native string into our type-safe enum.
+          final AlarmActionType actionType;
           final QuestionnaireResult result;
+
           switch (status) {
             case 'answered':
+              actionType = AlarmActionType.answered;
               result = QuestionnaireResult.answered;
             case 'declined':
+              actionType = AlarmActionType.declined;
               result = QuestionnaireResult.declined;
             case 'snoozed':
+              actionType = AlarmActionType.snoozed;
               result = QuestionnaireResult.snoozed;
             default:
               log(name: name, 'Unknown questionnaire status: $status');
               return; // Do nothing if status is unknown
           }
 
-          // 3. Send an event to the state machine. The state machine decides what happens next.
-          // This class no longer has any scheduling logic itself.
+          await DatabaseService.instance
+              .storeAlarmAction(actionType, answers: answers);
+
           AlarmStateManager.instance.dispatch(QuestionnaireFinished(result));
         } else {
           log(name: name, 'Questionnaire finished with null status.');

@@ -1,3 +1,4 @@
+import 'package:flutter_alarm_manager_poc/hive/models/alarm_action_type.dart';
 import 'package:hive/hive.dart';
 
 part 'alarm_action.g.dart';
@@ -7,9 +8,9 @@ class AlarmAction {
   AlarmAction(this.actionType, this.timestamp, [this.answers]);
 
   @HiveField(0)
-  final String actionType;
+  final AlarmActionType actionType;
   @HiveField(1)
-  final DateTime timestamp;
+  final int timestamp;
 
   @HiveField(2)
   final Map<String, int>? answers;
