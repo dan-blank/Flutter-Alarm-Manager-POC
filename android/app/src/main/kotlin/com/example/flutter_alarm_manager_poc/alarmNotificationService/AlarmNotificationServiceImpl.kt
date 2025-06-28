@@ -13,28 +13,63 @@ import com.example.flutter_alarm_manager_poc.activity.AlarmActivity
 import com.example.flutter_alarm_manager_poc.model.AlarmItem
 
 class AlarmNotificationServiceImpl(private val context: Context) : AlarmNotificationService {
-    private val CHANNEL_ID = "alarm_channel"
+    // --- Define unique Channel IDs for each behavior ---
+    private val CHANNEL_ID_VIBRATE_AND_SOUND = "alarm_channel_vibrate_sound"
+    private val CHANNEL_ID_VIBRATE_ONLY = "alarm_channel_vibrate_only"
+    private val CHANNEL_ID_SILENT = "alarm_channel_silent"
+
     private val notificationManager: NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     init {
-        createNotificationChannel()
+        createNotificationChannels()
     }
 
-    override fun createNotificationChannel() {
+    override fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Alarm Channel"
-            val descriptionText = "Channel for Alarm Notifications"
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-                description = descriptionText
+            // 1. Channel for Vibrate and Sound
+            val vibrateAndSoundChannel = NotificationChannel(
+                CHANNEL_ID_VIBRATE_AND_SOUND,
+                "Alarms (Vibrate and Sound)",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Channel for alarms with sound and vibration."
                 setBypassDnd(true)
-                setShowBadge(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                enableLights(true)
-                enableVibration(true) // Vibrate is enabled by default on the channel
+                enableVibration(true)
+                // Default sound is enabled with IMPORTANCE_HIGH
             }
-            notificationManager.createNotificationChannel(channel)
+
+            // 2. Channel for Vibrate Only
+            val vibrateOnlyChannel = NotificationChannel(
+                CHANNEL_ID_VIBRATE_ONLY,
+                "Alarms (Vibrate Only)",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Channel for alarms with vibration only."
+                setBypassDnd(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                enableVibration(true)
+                setSound(null, null) // Explicitly disable sound for this channel
+            }
+
+            // 3. Channel for Silent
+            val silentChannel = NotificationChannel(
+                CHANNEL_ID_SILENT,
+                "Alarms (Silent)",
+                NotificationManager.IMPORTANCE_HIGH // Still high to show as a heads-up notification
+            ).apply {
+                description = "Channel for silent alarms."
+                setBypassDnd(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                enableVibration(false) 
+                setSound(null, null)   
+            }
+
+            // --- Register all channels with the system ---
+            notificationManager.createNotificationChannel(vibrateAndSoundChannel)
+            notificationManager.createNotificationChannel(vibrateOnlyChannel)
+            notificationManager.createNotificationChannel(silentChannel)
         }
     }
 
@@ -42,7 +77,7 @@ class AlarmNotificationServiceImpl(private val context: Context) : AlarmNotifica
         val fullScreenIntent = Intent(context, AlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_NO_USER_ACTION or
-                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS 
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
 
             putExtra("ALARM_ID", alarmItem.id)
             putExtra("ALARM_MESSAGE", alarmItem.message)
@@ -55,7 +90,17 @@ class AlarmNotificationServiceImpl(private val context: Context) : AlarmNotifica
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
+        // --- Determine which channel to use based on the behavior string ---
+        val channelId = when (behavior.lowercase()) {
+            "vibrate" -> CHANNEL_ID_VIBRATE_ONLY
+            "silent" -> CHANNEL_ID_SILENT
+            "vibrateandsound" -> CHANNEL_ID_VIBRATE_AND_SOUND
+            else -> CHANNEL_ID_VIBRATE_AND_SOUND // Default case
+        }
+
+
+        // --- Build the notification using the selected channel ID ---
+        val notificationBuilder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.notification_bell)
             .setContentTitle("Alarm")
             .setContentText(alarmItem.message)
@@ -65,25 +110,9 @@ class AlarmNotificationServiceImpl(private val context: Context) : AlarmNotifica
             .setOngoing(true)
             .setAutoCancel(false)
 
-        // --- Configure notification based on the behavior string ---
-        when (behavior) {
-            "Vibrate" -> {
-                // The channel has vibration enabled, so we only need to remove the sound.
-                notificationBuilder.setSound(null)
-            }
-            "Silent" -> {
-                // Remove both sound and vibration.
-                notificationBuilder.setSound(null)
-                notificationBuilder.setVibrate(null)
-            }
-            "VibrateAndSound" -> {
-                // Do nothing, let the channel's default behavior (high importance) take over.
-            }
-        }
-
         val notification = notificationBuilder.build()
 
-        notificationManager.cancel(alarmItem.id)
+        // The system now handles sound/vibration based on the channel
         notificationManager.notify(alarmItem.id, notification)
     }
 
