@@ -2,6 +2,8 @@ import 'dart:developer';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_alarm_manager_poc/hive/service/database_service.dart';
+import 'package:flutter_alarm_manager_poc/state/alarm_state_manager.dart';
+import 'package:flutter_alarm_manager_poc/state/notification_behavior.dart';
 
 class AlarmMethodChannel {
   static const name = 'Flutter';
@@ -11,65 +13,33 @@ class AlarmMethodChannel {
     platform.setMethodCallHandler(_handleMethodCall);
   }
 
-  // --- PRIVATE SCHEDULING METHOD ---
-  // This is the single point of contact with the native side for scheduling.
-  static Future<void> _scheduleAlarm(int timeInMillis) async {
+  // --- PUBLIC METHODS ---
+  // These methods are now simple "bridges" to the native side.
+  // They contain no business logic.
+
+  /// Schedules a single alarm at the exact given time with the specified behavior.
+  static Future<void> schedule(
+      DateTime time, NotificationBehavior behavior) async {
     try {
+      final timeInMillis = time.millisecondsSinceEpoch;
       log(
           name: name,
-          'Scheduling alarm for ${DateTime.fromMillisecondsSinceEpoch(timeInMillis)}');
-      // Pass the exact time to the native method.
-      await platform
-          .invokeMethod('scheduleAlarm', {'triggerTime': timeInMillis});
+          'Scheduling alarm for $time with behavior ${behavior.name}');
+      await platform.invokeMethod('scheduleAlarm',
+          {'triggerTime': timeInMillis, 'behavior': behavior.name});
     } on PlatformException catch (e) {
       log(name: name, "Failed to schedule alarm: '${e.message}'.");
     }
   }
 
-  // --- PUBLIC LOGIC-BASED SCHEDULING METHODS ---
-
-  /// Schedules the very first alarm or the next one after an answer/decline.
-  /// This adheres to the 8-20h hourly constraint.
-  static Future<int> scheduleToNextWholeInterval() async {
-    final triggerTime = _calculateNextWholeIntervalTime();
-    await _scheduleAlarm(triggerTime.millisecondsSinceEpoch);
-    return triggerTime.millisecondsSinceEpoch;
-  }
-
-  /// Schedules an alarm 15 minutes from now.
-  static Future<void> scheduleToNextSnoozeInterval() async {
-    final triggerTime = _calculateSnoozeTime();
-    await _scheduleAlarm(triggerTime.millisecondsSinceEpoch);
-  }
-
-  // --- TIME CALCULATION LOGIC ---
-
-  /// Calculates the next valid hourly slot between 8:00 and 20:00.
-  static DateTime _calculateNextWholeIntervalTime() {
-    final now = DateTime.now();
-    DateTime nextAlarmTime;
-
-    // Case 1: It's 8 PM or later. Schedule for 8 AM tomorrow.
-    if (now.hour >= 23) {
-      nextAlarmTime = DateTime(now.year, now.month, now.day + 1, 8);
+  /// Cancels the scheduled alarm.
+  static Future<void> cancel() async {
+    try {
+      log(name: name, 'Cancelling alarm.');
+      await platform.invokeMethod('cancelAlarm');
+    } on PlatformException catch (e) {
+      log(name: name, "Failed to cancel alarm: '${e.message}'.");
     }
-    // Case 2: It's before 8 AM. Schedule for 8 AM today.
-    else if (now.hour < 8) {
-      nextAlarmTime = DateTime(now.year, now.month, now.day, 8);
-    }
-    // Case 3: It's during the active window (8:00 - 19:59). Schedule for the next hour.
-    else {
-      nextAlarmTime = DateTime(now.year, now.month, now.day, now.hour + 1);
-    }
-
-    // Return a time with 0 minutes, 0 seconds for precision.
-    return DateTime(nextAlarmTime.year, nextAlarmTime.month, nextAlarmTime.day,
-        nextAlarmTime.hour);
-  }
-
-  /// Calculates the snooze time (15 minutes from now).
-  static DateTime _calculateSnoozeTime() {
-    return DateTime.now().add(const Duration(minutes: 15));
   }
 
   // --- METHOD CALL HANDLER FROM NATIVE ---
@@ -83,23 +53,30 @@ class AlarmMethodChannel {
         log(name: name, 'Questionnaire finished with status: $status');
 
         if (status != null) {
-          // 1. Store the user's action
+          // 1. Store the user's action (side-effect).
+          final answerData = args['data'] as Map<dynamic, dynamic>?;
+          final answers = answerData
+              ?.map((key, value) => MapEntry(key.toString(), value as int));
+          await DatabaseService.instance
+              .storeAlarmAction(status, answers: answers);
+
+          // 2. Convert the native string into our type-safe enum.
+          final QuestionnaireResult result;
           switch (status) {
             case 'answered':
-              final answerData = args['data'] as Map<dynamic, dynamic>?;
-              // Safely cast to the expected type for Hive.
-              final answers = answerData
-                  ?.map((key, value) => MapEntry(key.toString(), value as int));
-              await DatabaseService.instance
-                  .storeAlarmAction(status, answers: answers);
-              await scheduleToNextWholeInterval();
+              result = QuestionnaireResult.answered;
             case 'declined':
-              await DatabaseService.instance.storeAlarmAction(status);
-              await scheduleToNextWholeInterval();
+              result = QuestionnaireResult.declined;
             case 'snoozed':
-              await DatabaseService.instance.storeAlarmAction(status);
-              await scheduleToNextSnoozeInterval();
+              result = QuestionnaireResult.snoozed;
+            default:
+              log(name: name, 'Unknown questionnaire status: $status');
+              return; // Do nothing if status is unknown
           }
+
+          // 3. Send an event to the state machine. The state machine decides what happens next.
+          // This class no longer has any scheduling logic itself.
+          AlarmStateManager.instance.dispatch(QuestionnaireFinished(result));
         } else {
           log(name: name, 'Questionnaire finished with null status.');
         }

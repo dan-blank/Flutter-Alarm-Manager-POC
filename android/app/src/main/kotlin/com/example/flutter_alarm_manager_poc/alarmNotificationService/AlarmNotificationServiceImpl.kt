@@ -32,13 +32,13 @@ class AlarmNotificationServiceImpl(private val context: Context) : AlarmNotifica
                 setShowBadge(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 enableLights(true)
-                enableVibration(true)
+                enableVibration(true) // Vibrate is enabled by default on the channel
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
-    override fun showNotification(alarmItem: AlarmItem) {
+    override fun showNotification(alarmItem: AlarmItem, behavior: String) {
         val fullScreenIntent = Intent(context, AlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
             putExtra("ALARM_ID", alarmItem.id)
@@ -59,14 +59,26 @@ class AlarmNotificationServiceImpl(private val context: Context) : AlarmNotifica
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(fullScreenPendingIntent, true)
-            .setOngoing(true) // to make the notification persistent
-            .setAutoCancel(false) // to prevent the notification from being dismissed
+            .setOngoing(true)
+            .setAutoCancel(false)
 
-
-        val notification = notificationBuilder.build().apply {
-            // to make the notification sound repeat until the user responds.
-            // flags = flags or Notification.FLAG_INSISTENT or Notification.FLAG_NO_CLEAR
+        // --- Configure notification based on the behavior string ---
+        when (behavior) {
+            "Vibrate" -> {
+                // The channel has vibration enabled, so we only need to remove the sound.
+                notificationBuilder.setSound(null)
+            }
+            "Silent" -> {
+                // Remove both sound and vibration.
+                notificationBuilder.setSound(null)
+                notificationBuilder.setVibrate(null)
+            }
+            "VibrateAndSound" -> {
+                // Do nothing, let the channel's default behavior (high importance) take over.
+            }
         }
+
+        val notification = notificationBuilder.build()
 
         notificationManager.cancel(alarmItem.id)
         notificationManager.notify(alarmItem.id, notification)

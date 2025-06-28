@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_alarm_manager_poc/hive/models/alarm_action.dart';
@@ -8,7 +9,6 @@ import 'package:flutter_alarm_manager_poc/hive/service/database_service.dart';
 import 'package:flutter_alarm_manager_poc/hive/service/settings_service.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 
 class ExportService {
   final SettingsService _settingsService = SettingsService.instance;

@@ -23,7 +23,11 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
         val message = intent?.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
+        // Extract the notification behavior from the intent's extras.
+        val behavior = intent?.getStringExtra("NOTIFICATION_BEHAVIOR") ?: "VibrateAndSound"
+
         val notificationService: AlarmNotificationService = AlarmNotificationServiceImpl(context)
-        notificationService.showNotification(AlarmItem(alarmId, message))
+        // Pass the behavior to the notification service.
+        notificationService.showNotification(AlarmItem(alarmId, message), behavior)
     }
 }

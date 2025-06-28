@@ -13,7 +13,7 @@ class MainActivity : FlutterActivity() {
 
     private val ENGINE_ID="alarm_manager_engine"
     private val CHANNEL = "com.example/alarm_manager"
-    private val TAG = "POC"
+    private val TAG = "POC-MainActivity"
 
     private lateinit var alarmScheduler: AlarmScheduler
 
@@ -30,21 +30,28 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "scheduleAlarm" -> {
-                    // 1. Extract the trigger time from the arguments.
                     val triggerTime = call.argument<Long>("triggerTime")
+                    // Receive the behavior string from Flutter, defaulting if not provided.
+                    val behavior = call.argument<String>("behavior") ?: "VibrateAndSound"
+
                     if (triggerTime != null) {
-                        Log.d(TAG, "Method Channel: Scheduling alarm for time: $triggerTime")
-                        // 2. Create an AlarmItem and schedule it.
+                        Log.d(TAG, "Method Channel: Scheduling alarm for time: $triggerTime with behavior: $behavior")
                         val alarmItem = AlarmItem(id = 1, message = "Time for your check-in!")
-                        alarmScheduler.schedule(alarmItem, triggerTime)
+                        // Pass the behavior to the scheduler.
+                        alarmScheduler.schedule(alarmItem, triggerTime, behavior)
                         result.success(null)
                     } else {
                         Log.e(TAG, "Method Channel: 'triggerTime' argument was null.")
                         result.error("INVALID_ARGUMENT", "triggerTime cannot be null", null)
                     }
                 }
-                // No changes needed for the 'questionnaireFinished' handler on this side,
-                // as its logic is now entirely in Flutter. We can remove it for clarity.
+                "cancelAlarm" -> {
+                    Log.d(TAG, "Method Channel: Cancelling alarm")
+                    // Use the static ID for cancellation.
+                    val alarmItem = AlarmItem(id = 1, message = "")
+                    alarmScheduler.cancel(alarmItem)
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
