@@ -19,7 +19,7 @@ class AlarmActionAdapter extends TypeAdapter<AlarmAction> {
     return AlarmAction(
       fields[0] as AlarmActionType,
       fields[1] as int,
-      (fields[2] as Map?)?.cast<String, int>(),
+      (fields[2] as Map?)?.cast<String, dynamic>(),
     );
   }
 

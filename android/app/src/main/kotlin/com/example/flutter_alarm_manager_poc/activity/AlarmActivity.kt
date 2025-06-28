@@ -1,16 +1,12 @@
 package com.example.flutter_alarm_manager_poc.activity
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import com.example.flutter_alarm_manager_poc.alarmNotificationService.AlarmNotificationService
 import com.example.flutter_alarm_manager_poc.alarmNotificationService.AlarmNotificationServiceImpl
-import com.example.flutter_alarm_manager_poc.alarmScheduler.AlarmScheduler
-import com.example.flutter_alarm_manager_poc.alarmScheduler.AlarmSchedulerImpl
-import com.example.flutter_alarm_manager_poc.model.AlarmItem
 import com.example.flutter_alarm_manager_poc.screens.AlarmScreen
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -24,14 +20,12 @@ class AlarmActivity : ComponentActivity() {
     private var flutterEngine: FlutterEngine? = null
     private var isNewEngineCreated = false // create new engine when app is closed and use existing when app is resumed state
     private lateinit var alarmNotificationService: AlarmNotificationService
-    private lateinit var alarmScheduler: AlarmScheduler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         actionBar?.hide()
 
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
-
 
         alarmNotificationService = AlarmNotificationServiceImpl(this)
 
@@ -58,8 +52,12 @@ class AlarmActivity : ComponentActivity() {
             MaterialTheme {
                 Surface(color = MaterialTheme.colorScheme.onSurface) {
                     AlarmScreen(
-                        onAccept = { q1, q2 ->
-                            val answerData = mapOf("feeling" to q1, "sleepQuality" to q2)
+                        onAccept = { q1, q2, additionalText ->
+                            val answerData = mapOf(
+                                "feeling" to q1,
+                                "sleepQuality" to q2,
+                                "additionalInfo" to additionalText
+                            )
                             val payload = mapOf("status" to "answered", "data" to answerData)
                             channel.invokeMethod("questionnaireFinished", payload)
                             alarmNotificationService.cancelNotification(alarmId)

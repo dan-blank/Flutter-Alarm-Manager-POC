@@ -1,11 +1,5 @@
 package com.example.flutter_alarm_manager_poc.screens
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.repeatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,23 +8,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Snooze
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,38 +30,34 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.flutter_alarm_manager_poc.utils.convertMillisToDate
 import com.example.flutter_alarm_manager_poc.utils.convertMillisToTime
-import org.w3c.dom.Text
 
 @Composable
 fun AlarmScreen(
-    onAccept: (Int, Int) -> Unit,
+    onAccept: (Int, Int, String) -> Unit,
     onDecline: () -> Unit,
     onSnooze: () -> Unit
 ) {
     var question1Selection by remember { mutableStateOf<Int?>(null) }
     var question2Selection by remember { mutableStateOf<Int?>(null) }
+    var additionalText by remember { mutableStateOf("") }
 
-    // Exit condition 1: Answering all questions automatically triggers the accept action.
+    // Reinstated Exit Condition 1: Answering all questions automatically triggers the accept action.
     LaunchedEffect(question1Selection, question2Selection) {
         // Storing in local variables for stability within the coroutine scope
         val q1 = question1Selection
         val q2 = question2Selection
 
-        // If both questions have been answered, trigger the accept action.
+        // If both questions have been answered, trigger the accept action, including any text.
         if (q1 != null && q2 != null) {
-            onAccept(q1, q2)
+            onAccept(q1, q2, additionalText)
         }
     }
 
@@ -112,6 +99,26 @@ fun AlarmScreen(
                 question = "How did you sleep?",
                 selectedOption = question2Selection,
                 onOptionSelected = { question2Selection = it }
+            )
+            OutlinedTextField(
+                value = additionalText,
+                onValueChange = { additionalText = it },
+                label = { Text("Additional information (optional)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = Color.White,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.White,
+                    unfocusedIndicatorColor = Color.Gray,
+                    focusedLabelColor = Color.White,
+                    unfocusedLabelColor = Color.Gray,
+                ),
+                maxLines = 3
             )
         }
 
@@ -156,12 +163,11 @@ fun ButtonAction(
             Icon(
                 imageVector = icon,
                 contentDescription = text,
-                tint = Color(0xFF8A2BE2), // This makes the icon white
+                tint = Color(0xFF8A2BE2),
                 modifier = Modifier
                     .size(40.dp)
-                    .align(Alignment.Center) // Adjust the size of the icon as needed
+                    .align(Alignment.Center)
             )
-
         }
         Text(
             modifier = Modifier.padding(top = 8.dp),

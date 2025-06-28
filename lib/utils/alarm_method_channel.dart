@@ -56,8 +56,10 @@ class AlarmMethodChannel {
         if (status != null) {
           // 1. Store the user's action (side-effect).
           final answerData = args['data'] as Map<dynamic, dynamic>?;
-          final answers = answerData
-              ?.map((key, value) => MapEntry(key.toString(), value as int));
+
+          // [FIX] Remove the cast 'as int'. This now correctly creates a Map<String, dynamic>
+          final answers =
+              answerData?.map((key, value) => MapEntry(key.toString(), value));
 
           final AlarmActionType actionType;
           final QuestionnaireResult result;

@@ -35,7 +35,7 @@ class DatabaseService {
 
   // Add an alarm action to the Hive box
   Future<void> storeAlarmAction(AlarmActionType actionType,
-      {Map<String, int>? answers}) async {
+      {Map<String, dynamic>? answers}) async {
     try {
       await _alarmBox.add(
         AlarmAction(

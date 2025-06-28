@@ -13,5 +13,5 @@ class AlarmAction {
   final int timestamp;
 
   @HiveField(2)
-  final Map<String, int>? answers;
+  final Map<String, dynamic>? answers;
 }
