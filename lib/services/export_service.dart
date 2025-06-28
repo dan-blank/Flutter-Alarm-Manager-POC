@@ -82,7 +82,9 @@ class ExportService {
           if (filename.startsWith('tracky_export_prefix_')) {
             final parts = filename.split('_');
             if (parts.length > 2) {
-              final id = int.tryParse(parts[2]);
+              // tracy_export_prefix_<id>_<timestamp>.csv
+              //   0     1      2     3        4
+              final id = int.tryParse(parts[3]);
               if (id != null && id > lastExportedId) {
                 lastExportedId = id;
               }
