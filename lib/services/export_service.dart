@@ -3,26 +3,25 @@ import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_alarm_manager_poc/hive/models/alarm_action.dart';
 import 'package:flutter_alarm_manager_poc/hive/service/database_service.dart';
 import 'package:flutter_alarm_manager_poc/hive/service/settings_service.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+/// A simple class to encapsulate the result of a service operation.
+class ServiceResult {
+  ServiceResult({required this.success, required this.message});
+  final bool success;
+  final String message;
+}
+
 class ExportService {
   final SettingsService _settingsService = SettingsService.instance;
   final DatabaseService _databaseService = DatabaseService.instance;
 
-  Future<void> showSnackBar(BuildContext context, String message) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  Future<String?> _getAndSetExportPath(BuildContext context) async {
+  Future<ServiceResult> _getAndSetExportPath() async {
     final PermissionStatus status;
-    // For Android 11 (API 30) and above, request MANAGE_EXTERNAL_STORAGE
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
       if (androidInfo.version.sdkInt >= 30) {
@@ -31,49 +30,51 @@ class ExportService {
         status = await Permission.storage.request();
       }
     } else {
-      // For iOS and other platforms, storage permission is generally handled by the picker.
       status = await Permission.storage.request();
     }
 
     if (!status.isGranted) {
-      await showSnackBar(
-          context, 'Storage permission is required to select a path.');
-      return null;
+      return ServiceResult(
+          success: false,
+          message: 'Storage permission is required to select a path.');
     }
 
     final path = await FilePicker.platform.getDirectoryPath();
 
     if (path != null) {
       await _settingsService.setExportPath(path);
-      await showSnackBar(context, 'Export path set to: $path');
-      return path;
+      return ServiceResult(success: true, message: 'Export path set to: $path');
     } else {
-      await showSnackBar(context, 'Path selection cancelled.');
-      return null;
+      return ServiceResult(
+          success: false, message: 'Path selection cancelled.');
     }
   }
 
-  Future<void> changeExportPath(BuildContext context) async {
-    await _getAndSetExportPath(context);
+  // This method now returns a result for the UI to handle.
+  Future<ServiceResult> changeExportPath() async {
+    return _getAndSetExportPath();
   }
 
-  Future<void> exportData(BuildContext context) async {
+  // The main export method, also refactored to return a ServiceResult.
+  Future<ServiceResult> exportData() async {
     var exportPath = _settingsService.getExportPath();
 
     if (exportPath == null || exportPath.isEmpty) {
-      exportPath = await _getAndSetExportPath(context);
-      if (exportPath == null) return;
+      final pathResult = await _getAndSetExportPath();
+      if (!pathResult.success) {
+        return pathResult; // Propagate the message (e.g., "permission denied")
+      }
+      exportPath = pathResult.message.replaceFirst('Export path set to: ', '');
     }
 
     final directory = Directory(exportPath);
     if (!directory.existsSync()) {
-      await showSnackBar(
-          context, 'Error: The selected directory does not exist.');
-      return;
+      return ServiceResult(
+          success: false,
+          message: 'Error: The selected directory does not exist.');
     }
 
-    // Scan for existing files and get the biggest ID
-    var lastExportedId = -1; // Use -1 to ensure ID 0 is included
+    var lastExportedId = -1;
     try {
       final files = directory.listSync();
       for (final file in files) {
@@ -82,8 +83,6 @@ class ExportService {
           if (filename.startsWith('tracky_export_prefix_')) {
             final parts = filename.split('_');
             if (parts.length > 3) {
-              // tracy_export_prefix_<id>_<timestamp>.csv
-              //   0     1      2     3        4
               final id = int.tryParse(parts[3]);
               if (id != null && id > lastExportedId) {
                 lastExportedId = id;
@@ -94,13 +93,11 @@ class ExportService {
       }
     } on Exception catch (e) {
       log('Error scanning directory: $e');
-      await showSnackBar(
-          context, 'Error scanning directory. Please check permissions.');
-      return;
+      return ServiceResult(
+          success: false,
+          message: 'Error scanning directory. Please check permissions.');
     }
-    log('Last exported ID found: $lastExportedId');
 
-    // Get all data and filter for new items
     final allActions =
         _databaseService.getAllAlarmActionsMap().cast<int, AlarmAction>();
     final newActions = allActions.entries
@@ -108,15 +105,13 @@ class ExportService {
         .toList();
 
     if (newActions.isEmpty) {
-      await showSnackBar(
-        context,
-        'No new data to export. Already up to date (last ID: $lastExportedId).',
-      );
-      return;
+      return ServiceResult(
+          success: true,
+          message:
+              'No new data to export. Already up to date (last ID: $lastExportedId).');
     }
 
     final lowestNewId = newActions.first.key;
-    // Use .last.key because Hive's toMap().entries is ordered by key
     final highestNewId = newActions.last.key;
 
     log(
@@ -174,13 +169,14 @@ class ExportService {
     try {
       await file.writeAsString(csvBuffer.toString());
       log('Export successful to ${file.path}');
-      await showSnackBar(
-        context,
-        'Exported ${newActions.length} items (IDs $lowestNewId-$highestNewId) to $fileName',
-      );
+      return ServiceResult(
+          success: true,
+          message:
+              'Exported ${newActions.length} items (IDs $lowestNewId-$highestNewId) to $fileName');
     } on Exception catch (e) {
       log('Error writing file: $e');
-      await showSnackBar(context, 'Failed to write export file.');
+      return ServiceResult(
+          success: false, message: 'Failed to write export file.');
     }
   }
 }

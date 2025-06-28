@@ -93,7 +93,7 @@ class AlarmStateManager {
             return AlarmActive(scheduledAt: _calculateSnoozeTime());
         }
       case DebugScheduleRequested():
-        // A special event for testing that schedules an alarm 10 minutes from now.
+        // A special event for testing that schedules an alarm 10 seconds from now.
         return AlarmActive(
             scheduledAt: DateTime.now().add(const Duration(seconds: 10)));
     }
